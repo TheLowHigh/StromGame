@@ -1,11 +1,9 @@
 from discord import Client, Intents, Embed
 from discord_slash import SlashCommand, SlashContext
 from discord_components import *
-import imdb
 import os
 from discord_slash.utils.manage_commands import create_option
 
-ia = imdb.IMDb()
 bot = Client(intents=Intents.default())
 slash = SlashCommand(bot, sync_commands = True)
 
