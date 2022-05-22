@@ -1,28 +1,46 @@
-from discord import Client, Intents, Embed
-from discord_slash import SlashCommand, SlashContext
-from discord_components import *
+import discord
 import os
-from discord_slash.utils.manage_commands import create_option
+from discord.ext import commands
+from igdb.wrapper import IGDBWrapper
+import json
 
-bot = Client(intents=Intents.default())
-slash = SlashCommand(bot, sync_commands = True)
+wrapper = IGDBWrapper("IGDB_CLIENT_ID", "IGDB_APP_TOKEN")
+client = commands.Bot(command_prefix="$")
 
 os.system('cls' if os.name == 'nt' else 'clear')
 
-@bot.event
+@client.event
 async def on_ready():
-    print("Ready !")
+    print("Le bot est en ligne !\n")
 
-@slash.slash(name="request", guild_ids=[915349367773351997], description="Demander un nouveau jeu.", options=[
-    create_option(name="jeu", description="Nom du jeu.", option_type=3, required=True)
-])
-async def request(ctx: SlashContext, jeu = 1):
-    embed = Embed(
-    title="Votre jeu à bien été demandé",
-    description='Nom : '+ jeu,
-    color=10181046,
-    )
-    await ctx.send(embed=embed)
-        
-    
-bot.run("token")
+@client.command(aliases=["request"], pass_context=True)
+async def showpic(ctx, *, search):
+
+    byte_array = wrapper.api_request(
+            'games',
+            'fields *; search "' + search + '"; limit 1;',
+          )
+    game_respone=json.loads(byte_array)
+    for game in game_respone:
+        nom = (game['name'])
+        game_url = (game['url'])
+        art_id = (game['artworks'][2])
+
+    byte_array2 = wrapper.api_request(
+            'artworks',
+            'fields url; where id = ' + str(art_id) + '; limit 1;',
+          )
+    art_respone=json.loads(byte_array2)
+    for artwork in art_respone:
+            art = (artwork['url'])
+
+    embed1 = discord.Embed(
+        title=f"Le jeu {nom} a bien été demandé", url = game_url,
+        color=10181046,
+        description="**Nom**\n" + "```" + nom + "```", inline=True
+        )
+    embed1.set_image(url="https:"+art)
+    await ctx.send(embed=embed1)
+
+
+client.run("TOKEN")
