@@ -4,10 +4,11 @@ from discord.ext import commands
 from igdb.wrapper import IGDBWrapper
 import json
 import asyncio
+import math
 
 wrapper = IGDBWrapper("CLIENT_ID", "IGDB_API_TOKEN")
 intents = discord.Intents().all()
-client = commands.Bot(command_prefix="$", intents=intents)
+client = commands.Bot(command_prefix="!", intents=intents)
 
 os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -34,6 +35,7 @@ async def request( ctx, *, search):
             art_id = game['cover']
             platform_id = game['platforms']
             genre_id = game['genres']
+            rating = game['aggregated_rating']
     except:
         pass
 
@@ -73,11 +75,14 @@ async def request( ctx, *, search):
     except:
         pass
 
-    embed = discord.Embed(
-        title=f"Le jeu {nom} a été trouvé", url = game_url,
-        color=10181046,
-        description=f"**Nom**\n```{nom}```"
-        )
+    try:
+        embed = discord.Embed(
+            title=f"Le jeu {nom} a été trouvé", url = game_url,
+            color=10181046,
+            description=f"**Nom**\n```{nom}```"
+            )
+    except:
+        await ctx.send("Le jeu demandé n'a pas été trouvé, avez-vous vérifié l'orthographe ? Si c'est le cas et que l'erreur persiste vous pouvez faire votre requête à l'administrateur.")
 
     try:
         platforms = str(all_platforms).replace("[", "").replace("]", "").replace("'", "")
@@ -99,6 +104,11 @@ async def request( ctx, *, search):
         pass
 
     try:
+        embed.add_field(name="**Note**",value=f"```{math.floor(rating)}/100```")
+    except:
+        pass
+
+    try:
         embed.set_image(url="https:"+art)
     except:
         pass
@@ -112,15 +122,13 @@ async def request( ctx, *, search):
         return user == ctx.author and str(reaction.emoji) == '✅'
     user2 = await client.fetch_user(ctx.message.author.id)
     try:
-        if user == ctx.author and str(reaction.emoji) == '❌':
-            await user2.send("Votre requête n'a pas été prise en compte car le jeu est incorrect.")
         reaction, user = await client.wait_for('reaction_add', timeout=60.0, check=check)
     except asyncio.TimeoutError:
         await user2.send("Votre requête n'a pas été prise en compte car vous n'avez pas confirmé.")
     
-    user3 = await client.fetch_user("ADMIN_USER_ID")
+    user3 = await client.fetch_user("389088767132041226")
     await user3.send(embed=embed)
-    user2.send("Votre requête a été prise en compte.")
+    await user2.send("Votre requête a été prise en compte.")
     requestlist.append(game['name'])
     userlist.append(ctx.message.author.id)
     usernamelist.append(ctx.author.name)
