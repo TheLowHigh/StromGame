@@ -1,28 +1,30 @@
-import discord
 import os
+import discord
 from discord.ext import commands
 from igdb.wrapper import IGDBWrapper
 import json
-import asyncio
 import math
+from discord.ui import Button, View
 
 wrapper = IGDBWrapper("CLIENT_ID", "IGDB_API_TOKEN")
 intents = discord.Intents().all()
-client = commands.Bot(command_prefix="!", intents=intents)
+client = commands.Bot(command_prefix="!", intents=intents, sync_commands_debug=True)
 
 os.system('cls' if os.name == 'nt' else 'clear')
 
 requestlist = []
 userlist = []
 usernamelist = []
+emoji_yes = '✅'
+emoji_no = '❌'
 
 @client.event
 async def on_ready():
     print("Le bot est en ligne !\n")
 
-@client.command(pass_context=True)
-async def request( ctx, *, search):
-
+@client.slash_command(pass_context=True, description="Demander un nouveau jeu.")
+async def request(ctx, *, search):
+    await ctx.defer(invisible=False)
     try:
         byte_array = wrapper.api_request(
             'games',
@@ -113,27 +115,34 @@ async def request( ctx, *, search):
     except:
         pass
     
-    
-    message = await ctx.send(embed=embed)
-    await message.add_reaction("✅")
-    await message.add_reaction("❌")
+    button1 = Button(emoji="👍", style=discord.ButtonStyle.green, row=1)
+    button2 = Button(emoji="👎", style=discord.ButtonStyle.red, row=1)
 
-    def check(reaction, user):
-        return user == ctx.author and str(reaction.emoji) == '✅'
-    user2 = await client.fetch_user(ctx.message.author.id)
-    try:
-        reaction, user = await client.wait_for('reaction_add', timeout=60.0, check=check)
-    except asyncio.TimeoutError:
+    user2 = await client.fetch_user(str(ctx.user.id))
+
+    async def button_callback(interaction):
+        user3 = await client.fetch_user("389088767132041226")
+        await user3.send(embed=embed)
+        await user2.send("Votre requête a été prise en compte.")
+        requestlist.append(game['name'])
+        userlist.append(ctx.user.id)
+        usernamelist.append(ctx.user.name)
+        await interaction.response.edit_message(content=None)
+    button1.callback = button_callback
+
+    async def button_callback2(interaction):
         await user2.send("Votre requête n'a pas été prise en compte car vous n'avez pas confirmé.")
-    
-    user3 = await client.fetch_user("389088767132041226")
-    await user3.send(embed=embed)
-    await user2.send("Votre requête a été prise en compte.")
-    requestlist.append(game['name'])
-    userlist.append(ctx.message.author.id)
-    usernamelist.append(ctx.author.name)
+        await interaction.response.edit_message(content=None)
 
-@client.command(pass_context=True)
+
+    button2.callback = button_callback2
+
+    view = View()
+    view.add_item(button1)
+    view.add_item(button2)
+    await ctx.followup.send(embed=embed, view=view)
+
+@client.slash_command(pass_context=True)
 async def list(ctx):
     embed = discord.Embed(
         title="Liste des requêtes :",
@@ -142,7 +151,7 @@ async def list(ctx):
     )
     await ctx.send(embed=embed)
 
-@client.command(pass_context=True)
+@client.slash_command(pass_context=True)
 async def fill(ctx):
     current_channel = ctx.channel
 
@@ -172,7 +181,47 @@ async def fill(ctx):
     )
     await user.send(embed=embed)
     channel = client.get_channel(GAME_CHANNEL_ID)
-    await channel.send(embed=embed)
+
+    try:
+        byte_array = wrapper.api_request(
+            'games',
+            'fields *; search "' + jeu + '"; limit 1;',
+          )
+        game_response=json.loads(byte_array)
+        for game in game_response:
+            nom = game['name']
+            game_url = game['url']
+            art_id = game['cover']
+            platform_id = game['platforms']
+            genre_id = game['genres']
+            rating = game['aggregated_rating']
+    except:
+        pass
+
+    try:
+        byte_array2 = wrapper.api_request(
+            'covers',
+            'fields *; where id = ' + str(art_id) + '; limit 1;',
+          )
+        art_respone=json.loads(byte_array2)
+        for artwork in art_respone:
+                art = artwork['url']
+                art = art.replace("thumb", "1080p")
+    except:
+        pass
+
+    try:
+        embed.set_image(url="https:"+art)
+    except:
+        pass
+
+    button1 = Button(label="Télécharger le jeu", url=url, style=discord.ButtonStyle.green, row=1)
+    button2 = Button(label="Plus d'informations", url=game_url, style=discord.ButtonStyle.grey, row=1)
+    view = View()
+    view.add_item(button1)
+    view.add_item(button2)
+
+    await channel.send(embed=embed, view=view)
     requestlist.remove(jeu)
 
 
