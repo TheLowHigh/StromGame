@@ -1,14 +1,22 @@
 import os
 import discord
-from discord.ext import commands
 from igdb.wrapper import IGDBWrapper
 import json
 import math
-from discord.ui import Button, View
+from dotenv import load_dotenv
 
-wrapper = IGDBWrapper("CLIENT_ID", "IGDB_API_TOKEN")
+load_dotenv()
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+CLIENT_ID = os.getenv('CLIENT_ID')
+IGDB_API_TOKEN = os.getenv('IGDB_API_TOKEN')
+ADMIN_USER_ID = os.getenv('ADMIN_USER_ID')
+GAME_CHANNEL_ID = os.getenv('GAME_CHANNEL_ID')
+GUILD_ID = os.getenv('GUILD_ID')
+
 intents = discord.Intents().all()
-client = commands.Bot(command_prefix="!", intents=intents, sync_commands_debug=True)
+
+wrapper = IGDBWrapper(CLIENT_ID, IGDB_API_TOKEN)
+client = discord.Bot(intents=intents, sync_commands_debug=True, debug_guilds=[GUILD_ID])
 
 os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -22,7 +30,7 @@ emoji_no = '❌'
 async def on_ready():
     print("Le bot est en ligne !\n")
 
-@client.slash_command(pass_context=True, description="Demander un nouveau jeu.")
+@client.command(pass_context=True, description="Demander un nouveau jeu.")
 async def request(ctx, *, search):
     await ctx.defer(invisible=False)
     try:
@@ -90,6 +98,7 @@ async def request(ctx, *, search):
         platforms = str(all_platforms).replace("[", "").replace("]", "").replace("'", "")
     except:
         pass
+    
     try:
         genres = str(all_genres).replace("[", "").replace("]", "").replace("'", "")
     except:
@@ -114,35 +123,32 @@ async def request(ctx, *, search):
         embed.set_image(url="https:"+art)
     except:
         pass
-    
-    button1 = Button(emoji="👍", style=discord.ButtonStyle.green, row=1)
-    button2 = Button(emoji="👎", style=discord.ButtonStyle.red, row=1)
 
     user2 = await client.fetch_user(str(ctx.user.id))
+    user3 = await client.fetch_user(ADMIN_USER_ID)
 
-    async def button_callback(interaction):
-        user3 = await client.fetch_user("389088767132041226")
-        await user3.send(embed=embed)
-        await user2.send("Votre requête a été prise en compte.")
-        requestlist.append(game['name'])
-        userlist.append(ctx.user.id)
-        usernamelist.append(ctx.user.name)
-        await interaction.response.edit_message(content=None)
-    button1.callback = button_callback
+    class View(discord.ui.View):
+        @discord.ui.button(emoji="👍", style=discord.ButtonStyle.green, row=1)
+        async def first_button_callback(self, button, interaction):
+            await user3.send(embed=embed)
+            await user2.send("Votre requête a été prise en compte.")
+            requestlist.append(game['name'])
+            userlist.append(ctx.user.id)
+            usernamelist.append(ctx.user.name)
+            for child in self.children:
+                child.disabled = True
+            await interaction.response.edit_message(view=self)
+            
+        @discord.ui.button(emoji="👎", style=discord.ButtonStyle.red, row=1)
+        async def second_button_callback(self, button, interaction):
+            await user2.send("Votre requête n'a pas été prise en compte car vous n'avez pas confirmé.")
+            for child in self.children:
+                child.disabled = True
+            await interaction.response.edit_message(view=self)
 
-    async def button_callback2(interaction):
-        await user2.send("Votre requête n'a pas été prise en compte car vous n'avez pas confirmé.")
-        await interaction.response.edit_message(content=None)
+    await ctx.followup.send(embed=embed, view=View())
 
-
-    button2.callback = button_callback2
-
-    view = View()
-    view.add_item(button1)
-    view.add_item(button2)
-    await ctx.followup.send(embed=embed, view=view)
-
-@client.slash_command(pass_context=True)
+@client.command(pass_context=True)
 async def list(ctx):
     embed = discord.Embed(
         title="Liste des requêtes :",
@@ -151,7 +157,7 @@ async def list(ctx):
     )
     await ctx.send(embed=embed)
 
-@client.slash_command(pass_context=True)
+@client.command(pass_context=True)
 async def fill(ctx):
     current_channel = ctx.channel
 
@@ -215,15 +221,17 @@ async def fill(ctx):
     except:
         pass
 
-    button1 = Button(label="Télécharger le jeu", url=url, style=discord.ButtonStyle.green, row=1)
-    button2 = Button(label="Plus d'informations", url=game_url, style=discord.ButtonStyle.grey, row=1)
-    view = View()
-    view.add_item(button1)
-    view.add_item(button2)
-
-    await channel.send(embed=embed, view=view)
+    class View(discord.ui.View):
+        @discord.ui.button(label="Télécharger le jeu", url=url, style=discord.ButtonStyle.green, row=1)
+        async def first_button_callback(interaction, self):
+            await interaction.response.edit_message(view=self)
+        @discord.ui.button(label="Plus d'informations", url=game_url, style=discord.ButtonStyle.grey, row=1)
+        async def first_button_callback(interaction, self):
+            await interaction.response.edit_message(view=self)
+    
+    await channel.send(embed=embed, view=View())
     requestlist.remove(jeu)
 
 
 
-client.run("TOKEN")
+client.run(BOT_TOKEN)
