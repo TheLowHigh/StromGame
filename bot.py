@@ -4,6 +4,8 @@ from igdb.wrapper import IGDBWrapper
 import json
 import math
 from dotenv import load_dotenv
+from collections import Counter
+from copy import deepcopy
 
 load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -23,8 +25,6 @@ os.system('cls' if os.name == 'nt' else 'clear')
 requestlist = []
 userlist = []
 usernamelist = []
-emoji_yes = '✅'
-emoji_no = '❌'
 
 @client.event
 async def on_ready():
@@ -155,7 +155,7 @@ async def list(ctx):
         color=10181046,
         description=str(requestlist).replace("[", "").replace("]", "").replace("'", "")
     )
-    await ctx.send(embed=embed)
+    await ctx.respond(embed=embed)
 
 @client.command(pass_context=True)
 async def fill(ctx):
@@ -176,7 +176,7 @@ async def fill(ctx):
     msg = await client.wait_for('message', check=check, timeout=60)
     url = msg.content
 
-    await ctx.send("Quelle est la taille du fichier ?")
+    await ctx.respond("Quelle est la taille du fichier ?")
     msg = await client.wait_for('message', check=check, timeout=60)
     taille = msg.content
     
@@ -233,5 +233,106 @@ async def fill(ctx):
     requestlist.remove(jeu)
 
 
+#StromCoin economy from here
+
+balance_dict = {}
+
+#add user to balance_dict if not already there
+async def add_user(user):
+    if user.id not in balance_dict:
+        balance_dict[user.id] = 0
+
+@client.command(pass_context=True)
+async def balance(ctx):
+    await add_user(ctx.author)
+    user = ctx.author
+    user_id = user.id
+    user_name = user.name
+    user_balance = balance_dict[user_id]
+    print(user_balance)
+    embed = discord.Embed(
+        title = f"Votre solde :",
+        color=10181046,
+        description=f"**Solde :**\n```{user_balance} StromCoins```"
+    )
+    await ctx.respond(embed=embed)
+
+
+@client.command(pass_context=True)
+async def pay(ctx, user: discord.User, amount: int):
+    await add_user(ctx.author)
+    await add_user(user)
+    user_id = user.id
+    user_name = user.name
+    user_balance = balance_dict[user_id]
+    if amount > user_balance:
+        await ctx.respond("Vous n'avez pas assez d'argent.")
+    else:
+        balance_dict[user_id] = user_balance - amount
+        balance_dict[ctx.author.id] = balance_dict[ctx.author.id] + amount
+        await ctx.respond(f"Vous avez payé {user_name} {amount}.")
+        replace_user_id(user)
+
+#replace user id in balance_dict with user name
+baltop_dict = deepcopy(balance_dict)
+async def replace_user_id(user):
+    user_id = user.id
+    user_name = user.name
+    baltop_dict[user_name] = balance_dict[user_id]
+
+@client.command(pass_context=True)
+async def give(ctx, user: discord.User, amount: int):
+    await add_user(user)
+    if ctx.author.id == int(ADMIN_USER_ID):
+        user_id = user.id
+        user_name = user.name
+        user_balance = balance_dict[user_id]
+        balance_dict[user_id] = user_balance + amount
+        await ctx.respond(f"Vous avez donné à {user_name} {amount} StromCoins.")
+        await replace_user_id(user)
+    else:
+        await ctx.respond("Vous n'avez pas les droits.")
+
+#create a /baltop command 
+@client.command(pass_context=True)
+async def baltop(ctx):
+    await add_user(ctx.author)
+    await replace_user_id(ctx.author)
+    embed = discord.Embed(
+        title = "Liste des StromJoueurs les plus riches :",
+        color=10181046,
+        description="**Top des joueurs :**\n```" + str(baltop_dict).replace('{', '').replace('}', '').replace('\'', '').replace(',', '\n')+ "```"
+    )
+    await ctx.respond(embed=embed)
+
+#create SHOP_LIST
+SHOP_LIST = {
+    "1 mois de StromRein": {
+        "price": 400,
+        "description": "Achetez ce pack pour 1 mois de StromRein."
+    },
+    "1 jeu StromGame": {
+        "price": 100,
+        "description": "Achetez ce pack pour 1 jeu StromGame."
+    },
+    "Pack de 10 jeux StromGame": {
+        "price": 1000,
+        "description": "Achetez ce pack pour 10 jeux StromGame."
+    },
+    "Rôle StromBadass": {
+        "price": 420,
+        "description": "Achetez ce pack pour obtenir le rôle StromBadass."
+    }
+}
+
+#create a /shop command
+@client.command(pass_context=True)
+async def shop(ctx):
+    embed = discord.Embed(
+        title = "Boutique :",
+        color=10181046,
+        description="**Boutique :**\n```" + str(SHOP_LIST).replace('{', '').replace('}', '').replace('\'', '').replace(',', '\n')+ "```"
+    )
+    await ctx.respond(embed=embed)
 
 client.run(BOT_TOKEN)
