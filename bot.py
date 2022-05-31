@@ -14,6 +14,7 @@ IGDB_API_TOKEN = os.getenv('IGDB_API_TOKEN')
 ADMIN_USER_ID = os.getenv('ADMIN_USER_ID')
 GAME_CHANNEL_ID = os.getenv('GAME_CHANNEL_ID')
 GUILD_ID = os.getenv('GUILD_ID')
+EMOJI = os.getenv('EMOJI')
 
 intents = discord.Intents().all()
 
@@ -249,11 +250,10 @@ async def balance(ctx):
     user_id = user.id
     user_name = user.name
     user_balance = balance_dict[user_id]
-    print(user_balance)
     embed = discord.Embed(
         title = f"Votre solde :",
         color=10181046,
-        description=f"**Solde :**\n```{user_balance} StromCoins```"
+        description=f"**Solde :**\n```{user_balance}```{EMOJI}"
     )
     await ctx.respond(embed=embed)
 
@@ -270,7 +270,7 @@ async def pay(ctx, user: discord.User, amount: int):
     else:
         balance_dict[user_id] = user_balance - amount
         balance_dict[ctx.author.id] = balance_dict[ctx.author.id] + amount
-        await ctx.respond(f"Vous avez payé {user_name} {amount}.")
+        await ctx.respond(f"Vous avez payé {user_name} {amount} {EMOJI}.")
         replace_user_id(user)
 
 #replace user id in balance_dict with user name
@@ -279,6 +279,8 @@ async def replace_user_id(user):
     user_id = user.id
     user_name = user.name
     baltop_dict[user_name] = balance_dict[user_id]
+    sorted(baltop_dict, key=baltop_dict.get, reverse=True)
+
 
 @client.command(pass_context=True)
 async def give(ctx, user: discord.User, amount: int):
@@ -288,7 +290,7 @@ async def give(ctx, user: discord.User, amount: int):
         user_name = user.name
         user_balance = balance_dict[user_id]
         balance_dict[user_id] = user_balance + amount
-        await ctx.respond(f"Vous avez donné à {user_name} {amount} StromCoins.")
+        await ctx.respond(f"Vous avez donné à {user_name} {amount} {EMOJI}.")
         await replace_user_id(user)
     else:
         await ctx.respond("Vous n'avez pas les droits.")
@@ -301,26 +303,26 @@ async def baltop(ctx):
     embed = discord.Embed(
         title = "Liste des StromJoueurs les plus riches :",
         color=10181046,
-        description="**Top des joueurs :**\n```" + str(baltop_dict).replace('{', '').replace('}', '').replace('\'', '').replace(',', '\n')+ "```"
+        description="**Top des joueurs :**\n```" + str(baltop_dict).replace('{', '').replace('}', '').replace('\'', '').replace(', ', '\n')+ "```"
     )
     await ctx.respond(embed=embed)
 
 #create SHOP_LIST
 SHOP_LIST = {
-    "1 mois de StromRein": {
-        "price": 400,
+    "**1 mois de StromRein**": {
+        EMOJI+" prix": 400,
         "description": "Achetez ce pack pour 1 mois de StromRein."
     },
-    "1 jeu StromGame": {
-        "price": 100,
+    "**1 jeu StromGame**": {
+        EMOJI+" prix": 100,
         "description": "Achetez ce pack pour 1 jeu StromGame."
     },
-    "Pack de 10 jeux StromGame": {
-        "price": 1000,
+    "**Pack de 10 jeux StromGame**": {
+        EMOJI+" prix": 1000,
         "description": "Achetez ce pack pour 10 jeux StromGame."
     },
-    "Rôle StromBadass": {
-        "price": 420,
+    "**Rôle StromBadass**": {
+        EMOJI+" prix": 420,
         "description": "Achetez ce pack pour obtenir le rôle StromBadass."
     }
 }
@@ -331,7 +333,7 @@ async def shop(ctx):
     embed = discord.Embed(
         title = "Boutique :",
         color=10181046,
-        description="**Boutique :**\n```" + str(SHOP_LIST).replace('{', '').replace('}', '').replace('\'', '').replace(',', '\n')+ "```"
+        description="**Boutique :**\n" + str(SHOP_LIST).replace('{', '').replace('}', '').replace('\'', '').replace(', ', '\n')
     )
     await ctx.respond(embed=embed)
 
