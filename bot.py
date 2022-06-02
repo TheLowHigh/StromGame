@@ -1,3 +1,4 @@
+import asyncio
 import os
 import discord
 from igdb.wrapper import IGDBWrapper
@@ -238,9 +239,9 @@ async def fill(ctx):
 
 balance_dict = {}
 
-#add user to balance_dict if not already there
+#add user to balance_dict if not already there and if not a bot
 async def add_user(user):
-    if user.id not in balance_dict:
+    if user.id not in balance_dict and not user.bot:
         balance_dict[user.id] = 0
 
 @client.command(pass_context=True)
@@ -298,6 +299,7 @@ async def give(ctx, user: discord.User, amount: int):
 #create a /baltop command 
 @client.command(pass_context=True)
 async def baltop(ctx):
+    sorted(baltop_dict, key=baltop_dict.get, reverse=True)
     await add_user(ctx.author)
     await replace_user_id(ctx.author)
     embed = discord.Embed(
@@ -308,24 +310,7 @@ async def baltop(ctx):
     await ctx.respond(embed=embed)
 
 #create SHOP_LIST
-SHOP_LIST = {
-    "**1 mois de StromRein**": {
-        EMOJI+" prix": 400,
-        "description": "Achetez ce pack pour 1 mois de StromRein."
-    },
-    "**1 jeu StromGame**": {
-        EMOJI+" prix": 100,
-        "description": "Achetez ce pack pour 1 jeu StromGame."
-    },
-    "**Pack de 10 jeux StromGame**": {
-        EMOJI+" prix": 1000,
-        "description": "Achetez ce pack pour 10 jeux StromGame."
-    },
-    "**Rôle StromBadass**": {
-        EMOJI+" prix": 420,
-        "description": "Achetez ce pack pour obtenir le rôle StromBadass."
-    }
-}
+SHOP_LIST = {}
 
 #create a /shop command
 @client.command(pass_context=True)
@@ -333,8 +318,76 @@ async def shop(ctx):
     embed = discord.Embed(
         title = "Boutique :",
         color=10181046,
-        description="**Boutique :**\n" + str(SHOP_LIST).replace('{', '').replace('}', '').replace('\'', '').replace(', ', '\n')
     )
+    for item in SHOP_LIST:
+        prix = SHOP_LIST[item]["prix"]
+        description = SHOP_LIST[item]["description"]
+        embed.add_field(name=item, value=f"prix : **{prix}** {EMOJI}\n{description}\n", inline=False)
     await ctx.respond(embed=embed)
+
+#create a /buy command and when an item is bought add it to their inventory
+@client.command(pass_context=True)
+async def buy(ctx, item: str):
+    await add_user(ctx.author)
+    user_id = ctx.author.id
+    user_balance = balance_dict[user_id]
+    if item in SHOP_LIST:
+        if user_balance >= SHOP_LIST[item]["prix"]:
+            balance_dict[user_id] = user_balance - SHOP_LIST[item]["prix"]
+            await ctx.respond(f"Vous avez acheté **{item}** pour {SHOP_LIST[item]['prix']} {EMOJI}.")
+            await replace_user_id(ctx.author)
+        else:
+            await ctx.respond("Vous n'avez pas assez d'argent.")
+    else:
+        await ctx.respond("Cet item n'existe pas.")
+
+#create a /add command and add an item to the shop list
+@client.command(pass_context=True)
+async def add(ctx, item: str, prix: int, description: str):
+    if ctx.author.id == int(ADMIN_USER_ID):
+        SHOP_LIST[item] = {
+            "prix": prix,
+            "description": description
+        }
+        await ctx.respond("L'item a été ajouté à la boutique.")
+    else:
+        await ctx.respond("Vous n'avez pas les droits.")
+
+#give 2 coins for every message
+@client.event
+async def on_message(message):
+    await add_user(message.author)
+    user_id = message.author.id
+    balance_dict[user_id] = balance_dict[user_id] + 2
+    await replace_user_id(message.author)
+
+#create a salary function that gives 50 coins every 7 days
+async def salary():
+    await client.wait_until_ready()
+    while not client.is_closed():
+        for user in balance_dict:
+            balance_dict[user] = balance_dict[user] + 50
+        await asyncio.sleep(604800)
+
+#create a badass_salary function that gives 50 coins every 7 days to member with StromBadass role
+async def badass_salary(message):
+    await client.wait_until_ready()
+    while not client.is_closed():
+        for user in balance_dict:
+            if discord.utils.get(message.author.roles, name="StromBadass") is not None:
+                balance_dict[user] = balance_dict[user] + 50
+        await asyncio.sleep(604800)
+
+#create a /remove command that can only be used by admins and remove an item from the shop list
+@client.command(pass_context=True)
+async def remove(ctx, item: str):
+    if ctx.author.id == int(ADMIN_USER_ID):
+        if item in SHOP_LIST:
+            del SHOP_LIST[item]
+            await ctx.respond("L'item a été retiré de la boutique.")
+        else:
+            await ctx.respond("Cet item n'existe pas.")
+    else:
+        await ctx.respond("Vous n'avez pas les droits.")
 
 client.run(BOT_TOKEN)
