@@ -35,6 +35,16 @@ async def on_ready():
 @client.command(pass_context=True, description="Demander un nouveau jeu.")
 async def request(ctx, *, search):
     await ctx.defer(invisible=False)
+    await add_user(ctx.author)
+    user_id = ctx.author.id
+    user_balance = balance_dict[user_id]
+    if user_balance >= 100:
+        balance_dict[user_id] = user_balance - 100
+        await ctx.respond("Vous avez demandé un remboursement.")
+        await replace_user_id(ctx.author)
+    else:
+        await ctx.respond("Vous n'avez pas assez d'argent.")
+
     try:
         byte_array = wrapper.api_request(
             'games',
