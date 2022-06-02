@@ -1,5 +1,6 @@
 import asyncio
 import os
+from pydoc import describe
 import discord
 from igdb.wrapper import IGDBWrapper
 import json
@@ -160,7 +161,7 @@ async def request(ctx, *, search):
 
     await ctx.followup.send(embed=embed, view=View())
 
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Lister les jeux demandés.")
 async def list(ctx):
     embed = discord.Embed(
         title="Liste des requêtes :",
@@ -169,7 +170,7 @@ async def list(ctx):
     )
     await ctx.respond(embed=embed)
 
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Compléter une requête.")
 async def fill(ctx):
     current_channel = ctx.channel
 
@@ -254,7 +255,7 @@ async def add_user(user):
     if user.id not in balance_dict and not user.bot:
         balance_dict[user.id] = 0
 
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Afficher votre solde de StromCoins.")
 async def balance(ctx):
     await add_user(ctx.author)
     user = ctx.author
@@ -269,7 +270,7 @@ async def balance(ctx):
     await ctx.respond(embed=embed)
 
 
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Payer une certaine somme de StromCoins à un utilisateur.")
 async def pay(ctx, user: discord.User, amount: int):
     await add_user(ctx.author)
     await add_user(user)
@@ -293,7 +294,7 @@ async def replace_user_id(user):
     sorted(baltop_dict, key=baltop_dict.get, reverse=True)
 
 
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Permet à l'administrateur de donner un certain nombre de StromCoins à un utilisateur.")
 async def give(ctx, user: discord.User, amount: int):
     await add_user(user)
     if ctx.author.id == int(ADMIN_USER_ID):
@@ -307,7 +308,7 @@ async def give(ctx, user: discord.User, amount: int):
         await ctx.respond("Vous n'avez pas les droits.")
 
 #create a /baltop command 
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Affiche le top des utilisateurs avec le plus de StromCoins.")
 async def baltop(ctx):
     sorted(baltop_dict, key=baltop_dict.get, reverse=True)
     await add_user(ctx.author)
@@ -323,7 +324,7 @@ async def baltop(ctx):
 SHOP_LIST = {}
 
 #create a /shop command
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Affiche la liste des items disponibles dans le magasin.")
 async def shop(ctx):
     embed = discord.Embed(
         title = "Boutique :",
@@ -336,7 +337,7 @@ async def shop(ctx):
     await ctx.respond(embed=embed)
 
 #create a /buy command and when an item is bought add it to their inventory
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Acheter un item dans le magasin.")
 async def buy(ctx, item: str):
     await add_user(ctx.author)
     user_id = ctx.author.id
@@ -352,7 +353,7 @@ async def buy(ctx, item: str):
         await ctx.respond("Cet item n'existe pas.")
 
 #create a /add command and add an item to the shop list
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Ajouter un item dans le magasin.")
 async def add(ctx, item: str, prix: int, description: str):
     if ctx.author.id == int(ADMIN_USER_ID):
         SHOP_LIST[item] = {
@@ -389,7 +390,7 @@ async def badass_salary(message):
         await asyncio.sleep(604800)
 
 #create a /remove command that can only be used by admins and remove an item from the shop list
-@client.command(pass_context=True)
+@client.command(pass_context=True, description="Supprimer un item du magasin.")
 async def remove(ctx, item: str):
     if ctx.author.id == int(ADMIN_USER_ID):
         if item in SHOP_LIST:
