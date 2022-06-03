@@ -419,7 +419,17 @@ async def giveall(ctx, amount: int):
             if member.bot == True:
                 pass
             else:
-                await give(ctx, member, amount) 
+                await add_user(member)
+                user_id = member.id
+                user_name = member.name
+                with open('balance.json', 'r') as f:
+                    balance_dict = json.load(f)
+                user_balance = balance_dict[str(user_id)]
+                balance_dict[str(user_id)] = user_balance + amount
+                await ctx.respond(f"Vous avez donné à {user_name} {amount} {EMOJI}.")
+                with open('balance.json', 'w') as f:
+                    json.dump(balance_dict, f, indent=4)
+                await replace_user_id(member)
         await ctx.respond(f"Vous avez donné à tous les utilisateurs {amount} {EMOJI}.")
         with open('balance.json', 'w') as f:
             json.dump(balance_dict, f, indent=4)
