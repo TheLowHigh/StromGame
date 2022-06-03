@@ -8,6 +8,7 @@ import math
 from dotenv import load_dotenv
 from collections import Counter
 from copy import deepcopy
+import time
 
 load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -257,17 +258,11 @@ with open('balance.json', 'r') as f:
 async def add_user(user):
     with open('balance.json', 'r') as f:
         balance_dict = json.load(f)
-    if str(user.id) in balance_dict:
-        return False
-    elif user.id is user.bot:
-        return False
-    else:
+    if user.id not in balance_dict and not user.bot:
         balance_dict[str(user.id)] = 0
         with open('balance.json', 'w') as f:
             json.dump(balance_dict, f, indent=4)
-        print(balance_dict)
         
-
 @client.command(pass_context=True, description="Afficher votre solde de StromCoins.")
 async def balance(ctx):
     await add_user(ctx.author)
@@ -308,7 +303,7 @@ async def pay(ctx, user: discord.User, amount: int):
         await replace_user_id(user)
 
 #replace user id in balance_dict with user name
-
+baltop_dict = deepcopy(balance_dict)
 async def replace_user_id(user):
     user_id = user.id
     user_name = user.name
@@ -346,6 +341,8 @@ async def baltop(ctx):
         with open('baltop.json', 'r') as f:
             baltop_dict = json.load(f)
         sorted(baltop_dict, key=baltop_dict.get, reverse=True)
+        with open('baltop.json', 'w') as f:
+            json.dump(baltop_dict, f, indent=4)
         embed = discord.Embed(
             title = "Liste des StromJoueurs les plus riches :",
             color=10181046,
@@ -362,15 +359,15 @@ with open('shop.json', 'r') as f:
 @client.command(pass_context=True, description="Affiche la liste des items disponibles dans le magasin.")
 async def shop(ctx):
     with open ("shop.json", "r") as f:
-        data = json.load(f)
+        SHOP_LIST = json.load(f)
         f.close()
     embed = discord.Embed(
         title = "Boutique :",
         color=10181046,
     )
-    for item in data:
-        prix = data[item]["prix"]
-        description = data[item]["description"]
+    for item in SHOP_LIST:
+        prix = SHOP_LIST[item]["prix"]
+        description = SHOP_LIST[item]["description"]
         embed.add_field(name=item, value=f"prix : **{prix}** {EMOJI}\n{description}\n", inline=False)
     await ctx.respond(embed=embed)
 
@@ -379,7 +376,11 @@ async def shop(ctx):
 async def buy(ctx, item: str):
     await add_user(ctx.author)
     user_id = ctx.author.id
-    user_balance = balance_dict
+    with open ("shop.json", "r") as f:
+        SHOP_LIST = json.load(f)
+    with open('balance.json', 'r') as f:
+            balance_dict = json.load(f)
+    user_balance = balance_dict[str(user_id)]
     if item in SHOP_LIST:
         if user_balance >= SHOP_LIST[item]["prix"]:
             balance_dict = user_balance - SHOP_LIST[item]["prix"]
@@ -394,6 +395,8 @@ async def buy(ctx, item: str):
 @client.command(pass_context=True, description="Ajouter un item dans le magasin.")
 async def add(ctx, item: str, prix: int, description: str):
     if ctx.author.id == int(ADMIN_USER_ID):
+        with open ("shop.json", "r") as f:
+            SHOP_LIST = json.load(f)
         SHOP_LIST[item] = {
             "prix": prix,
             "description": description
@@ -407,13 +410,14 @@ async def add(ctx, item: str, prix: int, description: str):
 #add a /giveall command to give all users a certain amount of StromCoins
 @client.command(pass_context=True, description="Donner un certain nombre de StromCoins à tous les utilisateurs.")
 async def giveall(ctx, amount: int):
+    await ctx.defer(invisible=False)
     if ctx.author.id == int(ADMIN_USER_ID):
-        with open('balance.json', 'r') as f:
-            balance_dict = json.load(f)
-        for user in client.users:
-            user_id = user.id
-            user_balance = balance_dict[str(user_id)]
-            balance_dict[str(user_id)] = user_balance + amount
+        members = ctx.guild.members
+        for member in members:
+            if member.bot == True:
+                pass
+            else:
+                await give(ctx, member, amount) 
         await ctx.respond(f"Vous avez donné à tous les utilisateurs {amount} {EMOJI}.")
         with open('balance.json', 'w') as f:
             json.dump(balance_dict, f, indent=4)
