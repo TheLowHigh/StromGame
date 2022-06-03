@@ -38,14 +38,18 @@ async def on_ready():
 async def request(ctx, *, search):
     await ctx.defer(invisible=False)
     await add_user(ctx.author)
+    with open('balance.json', 'r') as f:
+                balance_dict = json.load(f)
     user_id = ctx.author.id
-    user_balance = balance_dict
+    user_balance = balance_dict[str(user_id)]
     if user_balance >= 100:
         balance_dict = user_balance - 100
-        await ctx.respond("Vous avez demandé un remboursement.")
+        await ctx.respond("Votre jeu a bien été ajouté à la liste des jeux en attente.")
         await replace_user_id(ctx.author)
+        pass
     else:
         await ctx.respond("Vous n'avez pas assez d'argent.")
+        return False
 
     try:
         byte_array = wrapper.api_request(
