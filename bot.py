@@ -182,7 +182,7 @@ async def fill(ctx):
     def check(m):
         return m.channel == current_channel
 
-    await ctx.send("Choissisez un jeu :\n" + str(requestlist).replace("[", "").replace("]", "").replace("'", ""))
+    await ctx.respond("Choissisez un jeu :\n" + str(requestlist).replace("[", "").replace("]", "").replace("'", ""))
     msg = await client.wait_for('message', check=check, timeout=60)
     jeu = msg.content
 
@@ -194,7 +194,7 @@ async def fill(ctx):
     msg = await client.wait_for('message', check=check, timeout=60)
     url = msg.content
 
-    await ctx.respond("Quelle est la taille du fichier ?")
+    await ctx.send("Quelle est la taille du fichier ?")
     msg = await client.wait_for('message', check=check, timeout=60)
     taille = msg.content
     
@@ -240,10 +240,10 @@ async def fill(ctx):
         pass
 
     class View(discord.ui.View):
-        @discord.ui.button(label="Télécharger le jeu", url=url, style=discord.ButtonStyle.green, row=1)
+        @discord.ui.button(label="Télécharger le jeu", url=url, style=discord.ButtonStyle.url, row=1)
         async def first_button_callback(interaction, self):
             await interaction.response.edit_message(view=self)
-        @discord.ui.button(label="Plus d'informations", url=game_url, style=discord.ButtonStyle.grey, row=1)
+        @discord.ui.button(label="Plus d'informations", url=game_url, style=discord.ButtonStyle.url, row=1)
         async def first_button_callback(interaction, self):
             await interaction.response.edit_message(view=self)
     
