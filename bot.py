@@ -258,32 +258,31 @@ with open('balance.json', 'r') as f:
 async def add_user(user):
     with open('balance.json', 'r') as f:
         balance_dict = json.load(f)
-    if user.id not in balance_dict and not user.bot:
+        user_id = user.id
+    if str(user_id) not in balance_dict and not user.bot:
         balance_dict[str(user.id)] = 0
         with open('balance.json', 'w') as f:
             json.dump(balance_dict, f, indent=4)
+    else :
+        pass
         
 @client.command(pass_context=True, description="Afficher votre solde de StromCoins.")
 async def balance(ctx):
-    await add_user(ctx.author)
     user = ctx.author
     user_id = user.id
-    user_name = user.name
+    await add_user(user)
     with open('balance.json', 'r') as f:
         balance_dict = json.load(f)
-    user_balance = balance_dict[str(user_id)]
     embed = discord.Embed(
         title = f"Votre solde :",
         color=10181046,
-        description=f"**Solde :**\n```{user_balance}```{EMOJI}"
+        description=f"**Solde :**\n```{balance_dict[str(user_id)]}```{EMOJI}"
     )
     await ctx.respond(embed=embed)
     await replace_user_id(user)
 
-
-
 @client.command(pass_context=True, description="Payer une certaine somme de StromCoins à un utilisateur.")
-async def pay(ctx, user: discord.User, amount: int):
+async def pay(ctx, user: discord.User, amount: int): 
     await add_user(ctx.author)
     await add_user(user)
     user_id = user.id
@@ -291,19 +290,20 @@ async def pay(ctx, user: discord.User, amount: int):
     with open('balance.json', 'r') as f:
             balance_dict = json.load(f)
     user_balance = balance_dict[str(user_id)]
-    if amount > user_balance:
+    ctx_balance = balance_dict[str(ctx.author.id)]
+    if amount > ctx_balance:
         await ctx.respond("Vous n'avez pas assez d'argent.")
     else:
-        balance_dict = user_balance - amount
-        balance_dict[ctx.author.id] = balance_dict[ctx.author.id] + amount
-        await ctx.respond(f"Vous avez payé {user_name} {amount} {EMOJI}.")
+        balance_dict[str(ctx.author.id)] = ctx_balance - amount
+        balance_dict[str(user.id)] = user_balance + amount
+        await ctx.respond(f"Vous avez payé {user.name} {amount} {EMOJI}.")
         await user.send("Vous avez reçu un paiement de " + str(amount) + " " + EMOJI + " de la part de " + ctx.author.name)
         with open('balance.json', 'w') as f:
             json.dump(balance_dict, f, indent=4)
         await replace_user_id(user)
+        await replace_user_id(ctx.author)
 
 #replace user id in balance_dict with user name
-baltop_dict = deepcopy(balance_dict)
 async def replace_user_id(user):
     user_id = user.id
     user_name = user.name
@@ -317,23 +317,25 @@ async def replace_user_id(user):
         json.dump(baltop_dict, f, indent=4)
 
 
-@client.command(pass_context=True, description="Permet à l'administrateur de donner un certain nombre de StromCoins à un utilisateur.")
+#create a /give command for admins
+@client.command(pass_context=True, description="Donner des StromCoins à un utilisateur.")
 async def give(ctx, user: discord.User, amount: int):
-    await add_user(user)
     if ctx.author.id == int(ADMIN_USER_ID):
+        await add_user(ctx.author)
+        await add_user(user)
         user_id = user.id
         user_name = user.name
         with open('balance.json', 'r') as f:
-            balance_dict = json.load(f)
+                balance_dict = json.load(f)
         user_balance = balance_dict[str(user_id)]
         balance_dict[str(user_id)] = user_balance + amount
-        await ctx.respond(f"Vous avez donné à {user_name} {amount} {EMOJI}.")
-        await user.send("Vous avez reçu un paiement de " + str(amount) + " " + EMOJI + " de la part de " + ctx.author.name)
+        await ctx.respond(f"Vous avez donné {user_name} {amount} {EMOJI}.")
+        await user.send("Vous avez reçu un don de " + str(amount) + " " + EMOJI + " de la part de " + ctx.author.name)
         with open('balance.json', 'w') as f:
             json.dump(balance_dict, f, indent=4)
         await replace_user_id(user)
     else:
-        await ctx.respond("Vous n'avez pas les droits.")
+        await ctx.respond("Vous n'avez pas les droits nécessaires.")
 
 #create a /baltop command from baltop.json
 @client.command(pass_context=True, description="Affiche le top des utilisateurs avec le plus de StromCoins.")
@@ -421,7 +423,6 @@ async def giveall(ctx, amount: int):
         await ctx.respond(f"Vous avez donné à tous les utilisateurs {amount} {EMOJI}.")
         with open('balance.json', 'w') as f:
             json.dump(balance_dict, f, indent=4)
-        await replace_user_id(ctx.author)
     else:
         await ctx.respond("Vous n'avez pas les droits.")
 
@@ -432,7 +433,10 @@ async def on_message(message):
     await add_user(message.author)
     user_id = message.author.id
     try:
-        balance_dict = balance_dict + 2
+        user_balance = balance_dict[str(user_id)]
+        balance_dict[str(user_id)] = user_balance + 2
+        with open('balance.json', 'w') as f:
+            json.dump(balance_dict, f, indent=4)
         await replace_user_id(message.author)
     except:
         pass
@@ -442,7 +446,9 @@ async def salary():
     await client.wait_until_ready()
     while not client.is_closed():
         for user in balance_dict:
-            balance_dict[user] = balance_dict[user] + 50
+            user_id = user.id
+            user_balance = balance_dict[str(user_id)]
+            balance_dict[str(user_id)] = user_balance + 50
             with open('balance.json', 'w') as f:
                 json.dump(balance_dict, f, indent=4)
         await asyncio.sleep(604800)
@@ -453,7 +459,11 @@ async def badass_salary(message):
     while not client.is_closed():
         for user in balance_dict:
             if discord.utils.get(message.author.roles, name="StromBadass") is not None:
-                balance_dict[user] = balance_dict[user] + 50
+             user_id = user.id
+            user_balance = balance_dict[str(user_id)]
+            balance_dict[str(user_id)] = user_balance + 50
+            with open('balance.json', 'w') as f:
+                json.dump(balance_dict, f, indent=4)
         await asyncio.sleep(604800)
 
 #create a /remove command that can only be used by admins and remove an item from the shop list
