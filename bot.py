@@ -404,6 +404,24 @@ async def add(ctx, item: str, prix: int, description: str):
     else:
         await ctx.respond("Vous n'avez pas les droits.")
 
+#add a /giveall command to give all users a certain amount of StromCoins
+@client.command(pass_context=True, description="Donner un certain nombre de StromCoins à tous les utilisateurs.")
+async def giveall(ctx, amount: int):
+    if ctx.author.id == int(ADMIN_USER_ID):
+        with open('balance.json', 'r') as f:
+            balance_dict = json.load(f)
+        for user in client.users:
+            user_id = user.id
+            user_balance = balance_dict[str(user_id)]
+            balance_dict[str(user_id)] = user_balance + amount
+        await ctx.respond(f"Vous avez donné à tous les utilisateurs {amount} {EMOJI}.")
+        with open('balance.json', 'w') as f:
+            json.dump(balance_dict, f, indent=4)
+        await replace_user_id(ctx.author)
+    else:
+        await ctx.respond("Vous n'avez pas les droits.")
+
+
 #give 2 coins for every message
 @client.event
 async def on_message(message):
